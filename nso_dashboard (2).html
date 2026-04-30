@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSO Training Readiness 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d0d0f;--surface:#16161a;--surface2:#1e1e24;--border:#2a2a32;--border2:#35353f;
+    --text:#f0efe8;--muted:#7a7a8a;--dim:#4a4a5a;--accent:#c8f060;--accent2:#60c8f0;
+    --warn:#f0c060;--danger:#f06060;--success:#60f0a0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5;}
+  .header{padding:32px 40px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;}
+  .header-left h1{font-size:22px;font-weight:600;letter-spacing:-0.3px;}
+  .header-left p{font-size:12px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;}
+  .header-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .header-stats{display:flex;gap:12px;flex-wrap:wrap;}
+  .stat-pill{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 14px;text-align:center;min-width:90px;}
+  .stat-pill .num{font-size:20px;font-weight:600;font-family:'DM Mono',monospace;line-height:1;}
+  .stat-pill .lbl{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
+  .num-green{color:var(--accent);}.num-yellow{color:var(--warn);}.num-blue{color:var(--accent2);}.num-teal{color:var(--success);}
+  .sync-bar{display:flex;align-items:center;gap:8px;font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 12px;white-space:nowrap;}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .3s;}
+  .sync-dot.syncing{background:var(--warn);animation:blink .8s infinite;}
+  .sync-dot.synced{background:var(--success);}
+  .sync-dot.error{background:var(--danger);}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .timeline-header{padding:12px 40px 16px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;overflow-x:auto;}
+  .month-chip{font-size:10px;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:4px;border:1px solid var(--border);color:var(--muted);white-space:nowrap;cursor:pointer;transition:all .15s;}
+  .month-chip:hover{border-color:var(--border2);color:var(--text);}
+  .month-chip.active{background:var(--surface2);border-color:var(--accent2);color:var(--accent2);}
+  .month-chip .cnt{margin-left:5px;background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:9px;}
+  .month-chip.active .cnt{background:rgba(96,200,240,.15);}
+  .filters{padding:16px 40px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .filter-label{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-right:4px;}
+  .filter-btn{font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;}
+  .filter-btn:hover{border-color:var(--dim);color:var(--text);}
+  .filter-btn.active{background:var(--surface2);border-color:var(--accent);color:var(--accent);}
+  .search-wrap{margin-left:auto;}
+  .search-wrap input{font-family:'DM Sans',sans-serif;font-size:12px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;color:var(--text);width:200px;outline:none;transition:border-color .15s;}
+  .search-wrap input:focus{border-color:var(--accent2);}
+  .search-wrap input::placeholder{color:var(--dim);}
+  .main{padding:24px 40px 60px;}
+  .store-grid{display:grid;gap:10px;}
+  .table-headers{display:grid;grid-template-columns:48px 1fr 130px 130px 130px 130px 140px;padding:8px 20px;gap:12px;margin-bottom:8px;}
+  .col-header{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);}
+  .store-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .2s;}
+  .store-card:hover{border-color:var(--border2);}
+  .store-card.expanded{border-color:var(--border2);}
+  .card-header{display:grid;grid-template-columns:48px 1fr 130px 130px 130px 130px 140px;align-items:center;padding:14px 20px;cursor:pointer;gap:12px;}
+  .card-header:hover .store-name{color:var(--accent2);}
+  .store-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 6px;text-align:center;}
+  .store-name{font-weight:500;font-size:13px;transition:color .15s;}
+  .date-cell{font-size:11px;}
+  .date-cell .label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:2px;}
+  .date-cell .val{color:var(--text);font-size:12px;font-family:'DM Mono',monospace;}
+  .date-cell .val.past{color:var(--dim);}
+  .date-cell .val.soon{color:var(--accent);}
+  .status-badge{font-size:10px;font-weight:500;padding:4px 10px;border-radius:20px;white-space:nowrap;font-family:'DM Mono',monospace;}
+  .badge-done{background:rgba(96,240,160,.12);color:var(--success);border:1px solid rgba(96,240,160,.2);}
+  .badge-active{background:rgba(200,240,96,.12);color:var(--accent);border:1px solid rgba(200,240,96,.25);}
+  .badge-upcoming{background:rgba(96,200,240,.1);color:var(--accent2);border:1px solid rgba(96,200,240,.2);}
+  .badge-prep{background:rgba(240,192,96,.1);color:var(--warn);border:1px solid rgba(240,192,96,.2);}
+  .expand-arrow{margin-left:auto;color:var(--dim);font-size:12px;transition:transform .2s;}
+  .store-card.expanded .expand-arrow{transform:rotate(180deg);}
+  .mini-progress{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:6px;}
+  .mini-progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s;}
+  .card-body{display:none;border-top:1px solid var(--border);padding:20px;background:var(--surface2);}
+  .store-card.expanded .card-body{display:block;}
+  .card-body-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;}
+  .ib-label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px;}
+  .ib-val{font-size:13px;font-weight:500;}
+  .ib-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+  .checklist-section{margin-top:16px;}
+  .checklist-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .progress-text{font-family:'DM Mono',monospace;color:var(--dim);}
+  .checklist-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .check-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .15s;user-select:none;}
+  .check-item:hover{border-color:var(--border2);}
+  .check-item.done{border-color:rgba(96,240,160,.2);background:rgba(96,240,160,.05);}
+  .check-item.saving{opacity:.5;pointer-events:none;}
+  .check-box{width:16px;height:16px;min-width:16px;border-radius:3px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;transition:all .15s;position:relative;}
+  .check-item.done .check-box{background:var(--success);border-color:var(--success);}
+  .check-item.done .check-box::after{content:'';display:block;width:8px;height:5px;border-left:1.5px solid #0d0d0f;border-bottom:1.5px solid #0d0d0f;transform:rotate(-45deg) translate(1px,-1px);}
+  .check-label{font-size:12px;color:var(--muted);flex:1;transition:color .15s;}
+  .check-item.done .check-label{color:var(--dim);text-decoration:line-through;}
+  .owner-tag{font-size:9px;padding:2px 6px;border-radius:3px;white-space:nowrap;font-family:'DM Mono',monospace;}
+  .o-t{background:rgba(160,96,240,.15);color:#c090ff;}
+  .o-s{background:rgba(96,200,240,.12);color:var(--accent2);}
+  .o-tc{background:rgba(96,240,160,.1);color:var(--success);}
+  .o-it{background:rgba(240,96,96,.1);color:var(--danger);}
+  .footnote{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:10px;}
+  .log-section{margin-top:20px;border-top:1px solid var(--border);padding-top:16px;}
+  .log-section-title{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;}
+  .log-entry{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:8px;}
+  .log-meta{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+  .log-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);}
+  .log-attendees{font-size:11px;color:var(--muted);}
+  .log-items{font-size:12px;line-height:1.6;white-space:pre-wrap;}
+  .log-open{display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;background:rgba(240,192,96,.1);color:var(--warn);border:1px solid rgba(240,192,96,.2);margin-top:6px;margin-right:4px;font-family:'DM Mono',monospace;}
+  .add-log-btn{font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 14px;border-radius:6px;border:1px dashed var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;width:100%;margin-top:4px;}
+  .add-log-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+  .log-form{display:none;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:16px;margin-top:8px;}
+  .log-form.visible{display:block;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+  .form-group{display:flex;flex-direction:column;gap:4px;}
+  .form-group label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+  .form-group input,.form-group textarea{font-family:'DM Sans',sans-serif;font-size:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:7px 10px;color:var(--text);outline:none;transition:border-color .15s;resize:vertical;}
+  .form-group input:focus,.form-group textarea:focus{border-color:var(--accent2);}
+  .form-group textarea{min-height:70px;}
+  .form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+  .btn-save{font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 16px;border-radius:5px;border:none;background:var(--accent);color:#0d0d0f;cursor:pointer;font-weight:600;}
+  .btn-save:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-cancel{font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 14px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--dim);font-size:13px;}
+  @media(max-width:900px){
+    .card-header,.table-headers{grid-template-columns:48px 1fr 110px 90px;}
+    .date-cell:nth-child(n+5),.col-header:nth-child(n+5){display:none;}
+    .card-body-grid,.checklist-grid{grid-template-columns:1fr;}
+    .header,.main,.filters,.timeline-header{padding-left:20px;padding-right:20px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>NSO Training Readiness</h1>
+    <p>2026 · 18 stores · Fabletics</p>
+  </div>
+  <div class="header-right">
+    <div class="sync-bar">
+      <div class="sync-dot syncing" id="sync-dot"></div>
+      <span id="sync-label">Connecting...</span>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill"><div class="num num-green" id="stat-active">—</div><div class="lbl">Training</div></div>
+      <div class="stat-pill"><div class="num num-yellow" id="stat-prep">—</div><div class="lbl">Prep Phase</div></div>
+      <div class="stat-pill"><div class="num num-blue" id="stat-upcoming">—</div><div class="lbl">Upcoming</div></div>
+      <div class="stat-pill"><div class="num num-teal" id="stat-done">—</div><div class="lbl">Complete</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="timeline-header" id="month-row"></div>
+
+<div class="filters">
+  <span class="filter-label">STATUS</span>
+  <button class="filter-btn active" onclick="filterStatus('all',this)">All</button>
+  <button class="filter-btn" onclick="filterStatus('active',this)">Training now</button>
+  <button class="filter-btn" onclick="filterStatus('prep',this)">Prep phase</button>
+  <button class="filter-btn" onclick="filterStatus('upcoming',this)">Upcoming</button>
+  <button class="filter-btn" onclick="filterStatus('done',this)">Complete</button>
+  <div class="search-wrap"><input type="text" placeholder="Search store..." oninput="searchStores(this.value)"/></div>
+</div>
+
+<div class="main">
+  <div class="table-headers">
+    <div class="col-header">#</div>
+    <div class="col-header">Store</div>
+    <div class="col-header">Training dates</div>
+    <div class="col-header">Product load</div>
+    <div class="col-header">Store open</div>
+    <div class="col-header">Grand open</div>
+    <div class="col-header">Status</div>
+  </div>
+  <div class="store-grid" id="store-grid"></div>
+  <div class="empty-state" id="empty-state" style="display:none">No stores match.</div>
+</div>
+
+<script>
+// ── CONFIG — update token here if you regenerate ─────────────────────────────
+const AT_TOKEN   = 'patBHFfpKVHruYubx';
+const AT_BASE    = 'appPM5ReJSaemLKPQ';
+const TBL_CHECKS = 'NSO Checklist State';
+const TBL_LOGS   = 'NSO Prep Call Logs';
+const AT         = `https://api.airtable.com/v0/${AT_BASE}`;
+const HDR        = { 'Authorization': `Bearer ${AT_TOKEN}`, 'Content-Type': 'application/json' };
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const TODAY = new Date('2026-04-30');
+
+const STORES = [
+  { id:1,  num:'0133', name:'Citadel Outlets',                 trainStart:'2026-03-16', trainEnd:'2026-03-19', load:'2026-03-23', open:'2026-03-26', grand:'2026-04-11' },
+  { id:2,  num:'0131', name:'Las Americas Premium Outlets',    trainStart:'2026-03-23', trainEnd:'2026-03-26', load:'2026-03-30', open:'2026-04-02', grand:'2026-04-11' },
+  { id:3,  num:'0130', name:'Camarillo Premium Outlets',       trainStart:'2026-03-30', trainEnd:'2026-04-02', load:'2026-04-06', open:'2026-04-09', grand:'2026-04-18' },
+  { id:4,  num:'0144', name:'Outlet Shoppes of the Bluegrass', trainStart:'2026-03-30', trainEnd:'2026-04-02', load:'2026-04-06', open:'2026-04-09', grand:'2026-04-18' },
+  { id:5,  num:'0140', name:'Orlando Vineland Premium Outlets',trainStart:'2026-04-20', trainEnd:'2026-04-23', load:'2026-04-27', open:'2026-04-30', grand:'2026-05-08' },
+  { id:6,  num:'0136', name:'Tanger Outlets Fort Worth',       trainStart:'2026-04-27', trainEnd:'2026-04-30', load:'2026-05-04', open:'2026-05-07', grand:'2026-05-15' },
+  { id:7,  num:'0137', name:'Tanger Outlets Myrtle Beach',     trainStart:'2026-05-26', trainEnd:'2026-05-28', load:'2026-06-01', open:'2026-06-04', grand:'2026-06-12' },
+  { id:8,  num:'0138', name:'Ontario Mills Outlets',           trainStart:'2026-05-26', trainEnd:'2026-05-28', load:'2026-06-01', open:'2026-06-04', grand:'2026-06-12' },
+  { id:9,  num:'0135', name:'San Tan Village',                 trainStart:'2026-06-01', trainEnd:'2026-06-04', load:'2026-06-08', open:'2026-06-11', grand:'2026-06-20' },
+  { id:10, num:'0134', name:'Arden Fair',                      trainStart:'2026-06-01', trainEnd:'2026-06-04', load:'2026-06-08', open:'2026-06-11', grand:'2026-06-20' },
+  { id:11, num:'0141', name:'Fashion Outlets of Chicago',      trainStart:'2026-06-08', trainEnd:'2026-06-11', load:'2026-06-15', open:'2026-06-18', grand:'2026-06-27' },
+  { id:12, num:'0139', name:'Wrentham Village Premium Outlets',trainStart:'2026-06-15', trainEnd:'2026-06-18', load:'2026-06-22', open:'2026-06-25', grand:'2026-07-11' },
+  { id:13, num:'0145', name:'Dolphin Mall',                    trainStart:'2026-08-03', trainEnd:'2026-08-06', load:'2026-08-10', open:'2026-08-13', grand:null },
+  { id:14, num:'0146', name:'Tanger Outlets Phoenix',          trainStart:'2026-09-07', trainEnd:'2026-09-10', load:'2026-09-14', open:'2026-09-17', grand:'2026-09-26' },
+  { id:15, num:'0150', name:'Opry Mills',                      trainStart:'2026-10-05', trainEnd:'2026-10-08', load:'2026-10-12', open:'2026-10-15', grand:null },
+  { id:16, num:'0143', name:'Cielo Vista Mall',                trainStart:'2026-10-12', trainEnd:'2026-10-15', load:'2026-10-19', open:'2026-10-22', grand:null },
+  { id:17, num:'0147', name:'Polaris Fashion Place',           trainStart:'2026-10-12', trainEnd:'2026-10-15', load:'2026-10-19', open:'2026-10-22', grand:null },
+  { id:18, num:'0151', name:'Leesburg Premium Outlets',        trainStart:'2026-10-19', trainEnd:'2026-10-22', load:'2026-10-26', open:'2026-10-29', grand:null },
+];
+
+const CHECKLIST = [
+  { id:'c1',  label:'Facilitator agenda reviewed',          owner:'Training', cls:'o-t'  },
+  { id:'c2',  label:'Devices picked up from store',         owner:'SM',       cls:'o-s'  },
+  { id:'c3',  label:'OmniSuite / G-Store access confirmed', owner:'IT/Ops',   cls:'o-it' },
+  { id:'c4',  label:'Amazon supplies received',             owner:'TC',       cls:'o-tc' },
+  { id:'c5',  label:'Hotel room confirmed',                 owner:'TC',       cls:'o-tc' },
+  { id:'c6',  label:'Training allocation FedEx tracked',    owner:'Training', cls:'o-t'  },
+  { id:'c7',  label:'Print on Demand files ready (TC)',     owner:'TC',       cls:'o-tc' },
+  { id:'c8',  label:'Print on Demand files ready (SM)',     owner:'SM',       cls:'o-s'  },
+  { id:'c9',  label:'Store & Mall Details updated',         owner:'SM',       cls:'o-s'  },
+  { id:'c10', label:'Training roles assigned',              owner:'Training', cls:'o-t'  },
+  { id:'c11', label:'DoorDash gift card deployed *',        owner:'Training', cls:'o-t'  },
+];
+
+// In-memory state populated from Airtable
+// checks[storeId][checkId] = { checked:bool, recordId:string|null }
+// logs[storeId]            = [ {recordId, date, attendees, notes, openItems} ]
+const checks = {}, logs = {};
+STORES.forEach(s => { checks[s.id] = {}; logs[s.id] = []; });
+
+// ── SYNC UI ──────────────────────────────────────────────────────────────────
+function sync(state, msg) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + state;
+  document.getElementById('sync-label').textContent = msg;
+}
+
+// ── AIRTABLE API ─────────────────────────────────────────────────────────────
+async function atAll(table) {
+  let records = [], offset;
+  do {
+    const url = `${AT}/${encodeURIComponent(table)}?pageSize=100` + (offset ? `&offset=${offset}` : '');
+    const r = await fetch(url, { headers: HDR });
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    records = records.concat(d.records || []);
+    offset = d.offset;
+  } while (offset);
+  return records;
+}
+
+async function atCreate(table, fields) {
+  const r = await fetch(`${AT}/${encodeURIComponent(table)}`, {
+    method:'POST', headers:HDR, body:JSON.stringify({ records:[{ fields }] })
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return (await r.json()).records[0];
+}
+
+async function atPatch(table, recordId, fields) {
+  const r = await fetch(`${AT}/${encodeURIComponent(table)}/${recordId}`, {
+    method:'PATCH', headers:HDR, body:JSON.stringify({ fields })
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// ── LOAD ─────────────────────────────────────────────────────────────────────
+async function load() {
+  sync('syncing', 'Loading...');
+  try {
+    // Checklist state
+    const crecs = await atAll(TBL_CHECKS);
+    crecs.forEach(rec => {
+      const sid = rec.fields['Store ID'], cid = rec.fields['Check ID'];
+      if (sid && cid && checks[sid] !== undefined)
+        checks[sid][cid] = { checked: !!rec.fields['Checked'], recordId: rec.id };
+    });
+
+    // Prep call logs (newest first)
+    const lrecs = await atAll(TBL_LOGS);
+    lrecs.sort((a,b) => (b.fields['Date']||'').localeCompare(a.fields['Date']||''));
+    lrecs.forEach(rec => {
+      const sid = rec.fields['Store ID'];
+      if (sid && logs[sid] !== undefined)
+        logs[sid].push({ recordId:rec.id, date:rec.fields['Date']||'', attendees:rec.fields['Attendees']||'', notes:rec.fields['Notes']||'', openItems:rec.fields['Open Items']||'' });
+    });
+
+    sync('synced', 'Synced');
+  } catch(e) {
+    sync('error', 'Connection error — check token');
+    console.error(e);
+  }
+  renderGrid();
+  updateStats();
+}
+
+// ── TOGGLE CHECK ─────────────────────────────────────────────────────────────
+async function toggleCheck(sid, cid) {
+  const el = document.getElementById(`ci-${sid}-${cid}`);
+  if (!el) return;
+  el.classList.add('saving');
+  const cur = checks[sid][cid] || { checked:false, recordId:null };
+  const next = !cur.checked;
+  try {
+    sync('syncing', 'Saving...');
+    if (cur.recordId) {
+      await atPatch(TBL_CHECKS, cur.recordId, { 'Checked': next, 'Updated': new Date().toISOString().slice(0,10) });
+    } else {
+      const rec = await atCreate(TBL_CHECKS, { 'Store ID':sid, 'Check ID':cid, 'Checked':next, 'Updated':new Date().toISOString().slice(0,10) });
+      checks[sid][cid] = { checked:next, recordId:rec.id };
+    }
+    checks[sid][cid] = { ...(checks[sid][cid]||{}), checked:next };
+    sync('synced', 'Saved');
+  } catch(e) {
+    sync('error', 'Save failed');
+    el.classList.remove('saving');
+    return;
+  }
+  el.classList.toggle('done', next);
+  el.classList.remove('saving');
+  refreshProgress(sid);
+  updateStats();
+}
+
+function refreshProgress(sid) {
+  const done = CHECKLIST.filter(c => checks[sid][c.id]?.checked).length;
+  const pct  = Math.round(done / CHECKLIST.length * 100);
+  const card = document.getElementById('card-'+sid);
+  if (!card) return;
+  const fill = card.querySelector('.mini-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  const pt = card.querySelector('.progress-text');
+  if (pt) pt.textContent = `${done}/${CHECKLIST.length}`;
+}
+
+// ── SAVE LOG ─────────────────────────────────────────────────────────────────
+async function saveLog(sid) {
+  const date  = document.getElementById(`lf-date-${sid}`).value;
+  const att   = document.getElementById(`lf-att-${sid}`).value.trim();
+  const notes = document.getElementById(`lf-notes-${sid}`).value.trim();
+  const open  = document.getElementById(`lf-open-${sid}`).value.trim();
+  if (!date || !notes) { alert('Date and notes are required.'); return; }
+  const btn = document.querySelector(`#logform-${sid} .btn-save`);
+  if (btn) btn.disabled = true;
+  try {
+    sync('syncing', 'Saving log...');
+    const rec = await atCreate(TBL_LOGS, { 'Store ID':sid, 'Date':date, 'Attendees':att, 'Notes':notes, 'Open Items':open });
+    const entry = { recordId:rec.id, date, attendees:att, notes, openItems:open };
+    logs[sid].unshift(entry);
+    sync('synced', 'Log saved');
+  } catch(e) {
+    sync('error', 'Log save failed');
+    if (btn) btn.disabled = false;
+    return;
+  }
+  hideLogForm(sid);
+  const ld = document.getElementById(`logs-${sid}`);
+  if (ld) ld.innerHTML = logsHtml(sid);
+  if (btn) btn.disabled = false;
+}
+
+// ── RENDER HELPERS ────────────────────────────────────────────────────────────
+function logsHtml(sid) {
+  if (!logs[sid].length) return '';
+  return logs[sid].map(l => `
+    <div class="log-entry">
+      <div class="log-meta"><span class="log-date">${l.date}</span><span class="log-attendees">${l.attendees}</span></div>
+      <div class="log-items">${l.notes}</div>
+      ${l.openItems ? l.openItems.split('\n').filter(Boolean).map(o=>`<span class="log-open">${o}</span>`).join('') : ''}
+    </div>`).join('');
+}
+
+function cardBodyHtml(s) {
+  const done = CHECKLIST.filter(c => checks[s.id][c.id]?.checked).length;
+  const chks = CHECKLIST.map(c => {
+    const d = checks[s.id][c.id]?.checked;
+    return `<div class="check-item${d?' done':''}" id="ci-${s.id}-${c.id}" onclick="toggleCheck(${s.id},'${c.id}')">
+      <div class="check-box"></div>
+      <span class="check-label">${c.label}</span>
+      <span class="owner-tag ${c.cls}">${c.owner}</span>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card-body-grid">
+      <div><div class="ib-label">Training window</div><div class="ib-val">${fmtDate(s.trainStart)} – ${fmtDate(s.trainEnd)}</div><div class="ib-sub">4-day program</div></div>
+      <div><div class="ib-label">Product load</div><div class="ib-val">${fmtDate(s.load)}</div></div>
+      <div><div class="ib-label">Grand opening</div><div class="ib-val">${fmtDate(s.grand)}</div></div>
+    </div>
+    <div class="checklist-section">
+      <div class="checklist-title">Readiness checklist <span class="progress-text">${done}/${CHECKLIST.length}</span></div>
+      <div class="checklist-grid">${chks}</div>
+      <div class="footnote">* DoorDash gift cards deploy the weekend before NSO Training</div>
+    </div>
+    <div class="log-section">
+      <div class="log-section-title">Prep call log</div>
+      <div id="logs-${s.id}">${logsHtml(s.id)}</div>
+      <button class="add-log-btn" onclick="showLogForm(${s.id})">+ Log a prep call</button>
+      <div class="log-form" id="logform-${s.id}">
+        <div class="form-row">
+          <div class="form-group"><label>Call date</label><input type="date" id="lf-date-${s.id}"/></div>
+          <div class="form-group"><label>Attendees</label><input type="text" id="lf-att-${s.id}" placeholder="RD, SM, TC..."/></div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px"><label>Call notes / confirmed items</label><textarea id="lf-notes-${s.id}" placeholder="What was confirmed, discussed, decided..."></textarea></div>
+        <div class="form-group"><label>Open items (one per line)</label><textarea id="lf-open-${s.id}" placeholder="Devices not yet picked up&#10;TC to confirm hotel&#10;..."></textarea></div>
+        <div class="form-actions">
+          <button class="btn-cancel" onclick="hideLogForm(${s.id})">Cancel</button>
+          <button class="btn-save" onclick="saveLog(${s.id})">Save log</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── DATE UTILS ────────────────────────────────────────────────────────────────
+function pd(s) { return s ? new Date(s) : null; }
+function fmtDate(s) { if (!s) return '—'; return pd(s).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function dcls(s) { const d=pd(s); if(!d) return ''; const diff=(d-TODAY)/86400000; return diff<0?'past':diff<=7?'soon':''; }
+function status(s) {
+  const ts=pd(s.trainStart),te=pd(s.trainEnd),op=pd(s.open);
+  if (op && TODAY > op) return 'done';
+  if (ts && TODAY >= ts && te && TODAY <= te) return 'active';
+  const prep=new Date(ts); prep.setDate(prep.getDate()-14);
+  if (TODAY >= prep && TODAY < ts) return 'prep';
+  return 'upcoming';
+}
+function badge(st) {
+  const m={done:['badge-done','Complete'],active:['badge-active','Training now'],prep:['badge-prep','Prep phase'],upcoming:['badge-upcoming','Upcoming']};
+  const [cls,lbl]=m[st]||m.upcoming;
+  return `<span class="status-badge ${cls}">${lbl}</span>`;
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────────
+let fStatus='all', fMonth='all', fSearch='';
+function filterStatus(v,btn) { fStatus=v; document.querySelectorAll('.filters .filter-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); renderGrid(); }
+function searchStores(v) { fSearch=v.toLowerCase(); renderGrid(); }
+function setMonth(v,chip) { fMonth=v; document.querySelectorAll('.month-chip').forEach(c=>c.classList.remove('active')); chip.classList.add('active'); renderGrid(); }
+
+function buildMonthRow() {
+  const months={};
+  STORES.forEach(s=>{const m=s.trainStart.slice(0,7);months[m]=(months[m]||0)+1;});
+  const row=document.getElementById('month-row'); row.innerHTML='';
+  const all=document.createElement('div');
+  all.className='month-chip active'; all.textContent='All months'; all.dataset.month='all';
+  all.onclick=()=>setMonth('all',all); row.appendChild(all);
+  Object.entries(months).sort().forEach(([m,cnt])=>{
+    const chip=document.createElement('div');
+    chip.className='month-chip'; chip.dataset.month=m;
+    chip.innerHTML=`${new Date(m+'-01').toLocaleDateString('en-US',{month:'short',year:'2-digit'})}<span class="cnt">${cnt}</span>`;
+    chip.onclick=()=>setMonth(m,chip); row.appendChild(chip);
+  });
+}
+
+// ── RENDER GRID ───────────────────────────────────────────────────────────────
+function renderGrid() {
+  const list = STORES.filter(s =>
+    (fStatus==='all' || status(s)===fStatus) &&
+    (fMonth==='all'  || s.trainStart.startsWith(fMonth)) &&
+    (!fSearch || s.name.toLowerCase().includes(fSearch) || s.num.includes(fSearch))
+  );
+  const grid=document.getElementById('store-grid');
+  const empty=document.getElementById('empty-state');
+  if (!list.length) { grid.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none'; grid.innerHTML='';
+
+  list.forEach(s => {
+    const st=status(s);
+    const done=CHECKLIST.filter(c=>checks[s.id][c.id]?.checked).length;
+    const pct=Math.round(done/CHECKLIST.length*100);
+    const card=document.createElement('div');
+    card.className='store-card'; card.id='card-'+s.id;
+    card.innerHTML=`
+      <div class="card-header" onclick="toggleCard(${s.id})">
+        <div class="store-num">${s.num}</div>
+        <div>
+          <div class="store-name">${s.name}</div>
+          <div class="mini-progress"><div class="mini-progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="date-cell"><div class="label">Training</div><div class="val ${dcls(s.trainStart)}">${fmtDate(s.trainStart)} – ${fmtDate(s.trainEnd)}</div></div>
+        <div class="date-cell"><div class="label">Product load</div><div class="val ${dcls(s.load)}">${fmtDate(s.load)}</div></div>
+        <div class="date-cell"><div class="label">Store open</div><div class="val ${dcls(s.open)}">${fmtDate(s.open)}</div></div>
+        <div class="date-cell"><div class="label">Grand open</div><div class="val ${dcls(s.grand)}">${fmtDate(s.grand)}</div></div>
+        <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end">${badge(st)}<span class="expand-arrow">▾</span></div>
+      </div>
+      <div class="card-body" id="body-${s.id}">${cardBodyHtml(s)}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+function toggleCard(id) { document.getElementById('card-'+id)?.classList.toggle('expanded'); }
+function showLogForm(id) {
+  const f=document.getElementById('logform-'+id); if(!f) return;
+  f.classList.add('visible');
+  const d=document.getElementById('lf-date-'+id); if(d) d.value=TODAY.toISOString().slice(0,10);
+}
+function hideLogForm(id) { document.getElementById('logform-'+id)?.classList.remove('visible'); }
+
+function updateStats() {
+  const c={active:0,prep:0,upcoming:0,done:0};
+  STORES.forEach(s=>c[status(s)]++);
+  document.getElementById('stat-active').textContent=c.active;
+  document.getElementById('stat-prep').textContent=c.prep;
+  document.getElementById('stat-upcoming').textContent=c.upcoming;
+  document.getElementById('stat-done').textContent=c.done;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+buildMonthRow();
+renderGrid();
+updateStats();
+load();
+</script>
+</body>
+</html>
