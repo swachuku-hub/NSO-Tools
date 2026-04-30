@@ -132,7 +132,7 @@
     <p>2026 · 18 stores · Fabletics</p>
   </div>
   <div class="header-right">
-    <div class="sync-bar">
+    <div class="sync-bar" onclick="showTokenModal()" title="Click to update token" style="cursor:pointer;">
       <div class="sync-dot syncing" id="sync-dot"></div>
       <span id="sync-label">Connecting...</span>
     </div>
@@ -171,14 +171,45 @@
   <div class="empty-state" id="empty-state" style="display:none">No stores match.</div>
 </div>
 
-<script>
+<!-- Token config modal -->
+<div id="token-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#1e1e24;border:1px solid #35353f;border-radius:12px;padding:28px;width:480px;max-width:90vw;">
+    <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Connect to Airtable</div>
+    <div style="font-size:12px;color:#7a7a8a;margin-bottom:18px;line-height:1.6;">Paste your Airtable Personal Access Token below. It saves to this browser only — never stored in the file or on GitHub.</div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a7a8a;margin-bottom:6px;">Personal Access Token</div>
+    <input id="token-input" type="password" placeholder="patXXXXXX.XXXXXXX..." style="width:100%;font-family:'DM Mono',monospace;font-size:12px;background:#0d0d0f;border:1px solid #35353f;border-radius:6px;padding:10px 12px;color:#f0efe8;outline:none;margin-bottom:16px;"/>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="closeTokenModal()" style="font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 14px;border-radius:5px;border:1px solid #35353f;background:transparent;color:#7a7a8a;cursor:pointer;">Cancel</button>
+      <button onclick="saveToken()" style="font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 16px;border-radius:5px;border:none;background:#c8f060;color:#0d0d0f;cursor:pointer;font-weight:600;">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
 // ── CONFIG — update token here if you regenerate ─────────────────────────────
-const AT_TOKEN   = 'patBHFfpKVHruYubx';
+const AT_TOKEN   = localStorage.getItem('nso_at_token') || '';
 const AT_BASE    = 'appPM5ReJSaemLKPQ';
 const TBL_CHECKS = 'NSO Checklist State';
 const TBL_LOGS   = 'NSO Prep Call Logs';
 const AT         = `https://api.airtable.com/v0/${AT_BASE}`;
-const HDR        = { 'Authorization': `Bearer ${AT_TOKEN}`, 'Content-Type': 'application/json' };
+function getHDR() { return { 'Authorization': `Bearer ${localStorage.getItem('nso_at_token')||''}`, 'Content-Type': 'application/json' }; }
+
+function showTokenModal() {
+  const m = document.getElementById('token-modal');
+  m.style.display = 'flex';
+  const inp = document.getElementById('token-input');
+  inp.value = localStorage.getItem('nso_at_token') || '';
+  setTimeout(() => inp.focus(), 50);
+}
+function closeTokenModal() { document.getElementById('token-modal').style.display = 'none'; }
+function saveToken() {
+  const val = document.getElementById('token-input').value.trim();
+  if (!val) { alert('Please paste your token.'); return; }
+  localStorage.setItem('nso_at_token', val);
+  closeTokenModal();
+  // Reset state and reload
+  STORES.forEach(s => { checks[s.id] = {}; logs[s.id] = []; });
+  load();
+}
 
 // ── DATA ─────────────────────────────────────────────────────────────────────
 const TODAY = new Date('2026-04-30');
@@ -235,7 +266,7 @@ async function atAll(table) {
   let records = [], offset;
   do {
     const url = `${AT}/${encodeURIComponent(table)}?pageSize=100` + (offset ? `&offset=${offset}` : '');
-    const r = await fetch(url, { headers: HDR });
+    const r = await fetch(url, { headers: getHDR() });
     if (!r.ok) throw new Error(await r.text());
     const d = await r.json();
     records = records.concat(d.records || []);
@@ -246,7 +277,7 @@ async function atAll(table) {
 
 async function atCreate(table, fields) {
   const r = await fetch(`${AT}/${encodeURIComponent(table)}`, {
-    method:'POST', headers:HDR, body:JSON.stringify({ records:[{ fields }] })
+    method:'POST', headers:getHDR(), body:JSON.stringify({ records:[{ fields }] })
   });
   if (!r.ok) throw new Error(await r.text());
   return (await r.json()).records[0];
@@ -254,7 +285,7 @@ async function atCreate(table, fields) {
 
 async function atPatch(table, recordId, fields) {
   const r = await fetch(`${AT}/${encodeURIComponent(table)}/${recordId}`, {
-    method:'PATCH', headers:HDR, body:JSON.stringify({ fields })
+    method:'PATCH', headers:getHDR(), body:JSON.stringify({ fields })
   });
   if (!r.ok) throw new Error(await r.text());
   return r.json();
@@ -408,7 +439,7 @@ function cardBodyHtml(s) {
 }
 
 // ── DATE UTILS ────────────────────────────────────────────────────────────────
-function pd(s) { return s ? new Date(s) : null; }
+function pd(s) { if (!s) return null; const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 function fmtDate(s) { if (!s) return '—'; return pd(s).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
 function dcls(s) { const d=pd(s); if(!d) return ''; const diff=(d-TODAY)/86400000; return diff<0?'past':diff<=7?'soon':''; }
 function status(s) {
@@ -503,7 +534,12 @@ function updateStats() {
 buildMonthRow();
 renderGrid();
 updateStats();
-load();
+if (!localStorage.getItem('nso_at_token')) {
+  sync('error', 'No token — click to connect');
+  showTokenModal();
+} else {
+  load();
+}
 </script>
 </body>
 </html>
